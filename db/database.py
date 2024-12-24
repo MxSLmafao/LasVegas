@@ -1,6 +1,7 @@
 import os
 import asyncpg
 from typing import Optional, List, Tuple
+from decimal import Decimal
 
 class Database:
     _pool = None
@@ -49,14 +50,14 @@ async def delete_user(user_id: int) -> bool:
         )
         return 'DELETE 1' in result
 
-async def get_balance(user_id: int) -> Optional[float]:
+async def get_balance(user_id: int) -> Optional[Decimal]:
     pool = await Database.get_pool()
     async with pool.acquire() as conn:
         record = await conn.fetchrow(
             'SELECT balance FROM users WHERE user_id = $1',
             user_id
         )
-        return record['balance'] if record else None
+        return Decimal(str(record['balance'])) if record else None
 
 async def update_balance(user_id: int, amount: float) -> bool:
     pool = await Database.get_pool()
@@ -66,10 +67,10 @@ async def update_balance(user_id: int, amount: float) -> bool:
                 UPDATE users 
                 SET balance = balance + $2 
                 WHERE user_id = $1 AND balance + $2 >= 0
-            ''', user_id, amount)
+            ''', user_id, Decimal(str(amount)))
             return 'UPDATE 1' in result
 
-async def set_balance(user_id: int, amount: float) -> bool:
+async def set_balance(user_id: int, amount: Decimal) -> bool:
     """Set a user's balance to a specific amount. Used by admin commands."""
     pool = await Database.get_pool()
     async with pool.acquire() as conn:
@@ -90,4 +91,4 @@ async def get_leaderboard() -> List[Tuple[str, float]]:
             ORDER BY balance DESC 
             LIMIT 5
         ''')
-        return [(record['username'], record['balance']) for record in records]
+        return [(record['username'], float(record['balance'])) for record in records]

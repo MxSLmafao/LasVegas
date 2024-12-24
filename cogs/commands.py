@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from db.database import create_user, get_balance, update_balance, get_leaderboard, delete_user, set_balance
 from typing import Optional
+from decimal import Decimal, InvalidOperation
 
 ADMIN_USER_ID = 791177475190161419
 
@@ -131,15 +132,19 @@ class Commands(commands.Cog):
             await interaction.response.send_message(f"Failed: User {user.name} doesn't have an account.", ephemeral=True)
             return
 
-        new_balance = current_balance + amount
-        success = await set_balance(user.id, new_balance)
+        try:
+            # Convert float to Decimal before addition
+            new_balance = current_balance + Decimal(str(amount))
+            success = await set_balance(user.id, new_balance)
 
-        if success:
-            await interaction.response.send_message(
-                f"Successfully given ${amount:.2f} to {user.name}.\nTheir new balance is ${new_balance:.2f}"
-            )
-        else:
-            await interaction.response.send_message(f"Failed to update {user.name}'s balance.", ephemeral=True)
+            if success:
+                await interaction.response.send_message(
+                    f"Successfully given ${amount:.2f} to {user.name}.\nTheir new balance is ${new_balance:.2f}"
+                )
+            else:
+                await interaction.response.send_message(f"Failed to update {user.name}'s balance.", ephemeral=True)
+        except (InvalidOperation, ValueError) as e:
+            await interaction.response.send_message(f"Error processing amount: Invalid number format", ephemeral=True)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Commands(bot))
