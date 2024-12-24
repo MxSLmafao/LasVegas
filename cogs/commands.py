@@ -8,6 +8,32 @@ class Commands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    @app_commands.command(name="help", description="Shows all available commands")
+    async def help_command(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="🎲 Blackjack Bot Commands",
+            description="Here are all the available commands:",
+            color=discord.Color.blue()
+        )
+
+        commands_info = [
+            ("challenge", "Challenge a user to Blackjack with a wager"),
+            ("new", "Create a new account with $100 starting balance"),
+            ("bal", "Check your current balance"),
+            ("dep", "Deposit money to another user"),
+            ("lb", "Show top 5 richest users"),
+            ("help", "Shows this help message")
+        ]
+
+        for name, desc in commands_info:
+            embed.add_field(
+                name=f"/{name}",
+                value=desc,
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed)
+
     @app_commands.command(name="new", description="Create a new account with $100 starting balance")
     async def new_account(self, interaction: discord.Interaction):
         success = await create_user(interaction.user.id, interaction.user.name)
@@ -52,7 +78,7 @@ class Commands(commands.Cog):
     @app_commands.command(name="lb", description="Show top 5 richest users")
     async def leaderboard(self, interaction: discord.Interaction):
         leaders = await get_leaderboard()
-        
+
         embed = discord.Embed(title="🏆 Richest Players", color=discord.Color.gold())
         for i, (username, balance) in enumerate(leaders, 1):
             embed.add_field(
@@ -60,7 +86,7 @@ class Commands(commands.Cog):
                 value=f"${balance:.2f}",
                 inline=False
             )
-        
+
         await interaction.response.send_message(embed=embed)
 
 async def setup(bot: commands.Bot):
