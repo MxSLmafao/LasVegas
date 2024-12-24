@@ -40,6 +40,15 @@ async def create_user(user_id: int, username: str) -> bool:
         except asyncpg.UniqueViolationError:
             return False
 
+async def delete_user(user_id: int) -> bool:
+    pool = await Database.get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            'DELETE FROM users WHERE user_id = $1',
+            user_id
+        )
+        return 'DELETE 1' in result
+
 async def get_balance(user_id: int) -> Optional[float]:
     pool = await Database.get_pool()
     async with pool.acquire() as conn:

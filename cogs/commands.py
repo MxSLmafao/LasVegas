@@ -1,8 +1,10 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from db.database import create_user, get_balance, update_balance, get_leaderboard
+from db.database import create_user, get_balance, update_balance, get_leaderboard, delete_user
 from typing import Optional
+
+ADMIN_USER_ID = 791177475190161419
 
 class Commands(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -88,6 +90,19 @@ class Commands(commands.Cog):
             )
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="da", description="[Admin] Delete a user's account")
+    @app_commands.describe(user="User whose account to delete")
+    async def delete_account(self, interaction: discord.Interaction, user: discord.User):
+        if interaction.user.id != ADMIN_USER_ID:
+            await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+            return
+
+        success = await delete_user(user.id)
+        if success:
+            await interaction.response.send_message(f"Successfully deleted {user.name}'s account.")
+        else:
+            await interaction.response.send_message(f"Failed to delete account: User {user.name} doesn't have an account.")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Commands(bot))
