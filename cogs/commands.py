@@ -4,12 +4,70 @@ from discord.ext import commands
 from db.database import create_user, get_balance, update_balance, get_leaderboard, delete_user, set_balance
 from typing import Optional
 from decimal import Decimal, InvalidOperation
+import logging
+import aiohttp
+from io import BytesIO
 
 ADMIN_USER_ID = 791177475190161419
+PLAYERLIST_CATEGORY_ID = 1220076913075425311
+PLAYERLIST_USER_ID = 1290059415185129575
+PLAYERLIST_IMAGE_URL = "http://files.raw-tea.xyz/files/Screenshot_2024-12-19-10-34-04-782_com.discord.png"
+
+logger = logging.getLogger('discord')
 
 class Commands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self._last_member = None
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        # Ignore messages from bots
+        if message.author.bot:
+            return
+
+        # Check if message is in the specified category
+        if message.channel.category_id != PLAYERLIST_CATEGORY_ID:
+            return
+
+        # Check if message is exactly "playerlist" or "Playerlist"
+        if message.content.lower() != "playerlist":
+            return
+
+        try:
+            # Get the user whose avatar we'll use
+            user = await self.bot.fetch_user(PLAYERLIST_USER_ID)
+            if not user:
+                logger.error(f"Could not fetch user {PLAYERLIST_USER_ID}")
+                return
+
+            # Download the image
+            async with aiohttp.ClientSession() as session:
+                async with session.get(PLAYERLIST_IMAGE_URL) as response:
+                    if response.status != 200:
+                        logger.error(f"Failed to download image: {response.status}")
+                        return
+                    image_data = await response.read()
+
+            # Create webhook
+            webhook = await message.channel.create_webhook(name=user.name)
+
+            try:
+                # Send message with webhook using BytesIO for the image
+                image_file = discord.File(BytesIO(image_data), filename="playerlist.png")
+                await webhook.send(
+                    username=user.name,
+                    avatar_url=user.avatar.url if user.avatar else None,
+                    file=image_file
+                )
+            finally:
+                # Always clean up the webhook
+                await webhook.delete()
+
+        except aiohttp.ClientError as e:
+            logger.error(f"Error downloading image: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error in playerlist webhook: {str(e)}")
 
     @app_commands.command(name="help", description="Shows all available commands")
     async def help_command(self, interaction: discord.Interaction):

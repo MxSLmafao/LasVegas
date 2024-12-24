@@ -316,12 +316,14 @@ name = "repl-nix-blackjackbattle"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "asyncpg" },
     { name = "discord-py" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = ">=3.11.11" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "discord-py", specifier = ">=2.4.0" },
 ]
