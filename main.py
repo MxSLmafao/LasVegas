@@ -10,14 +10,18 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 class BlackjackBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
+        intents.guild_messages = True  # Enable guild messages intent
         super().__init__(command_prefix='!', intents=intents)
-        
+
     async def setup_hook(self):
         try:
             print('Initializing database...')
