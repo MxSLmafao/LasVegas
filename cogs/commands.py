@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from db.database import create_user, get_balance, update_balance, get_leaderboard, delete_user
+from db.database import create_user, get_balance, update_balance, get_leaderboard, delete_user, set_balance
 from typing import Optional
 
 ADMIN_USER_ID = 791177475190161419
@@ -31,6 +31,17 @@ class Commands(commands.Cog):
             embed.add_field(
                 name=f"/{name}",
                 value=desc,
+                inline=False
+            )
+
+        if interaction.user.id == ADMIN_USER_ID:
+            admin_commands = [
+                ("da", "[Admin] Delete a user's account"),
+                ("give", "[Admin] Give money to a user")
+            ]
+            embed.add_field(
+                name="\nAdmin Commands",
+                value="\n".join([f"/{cmd} - {desc}" for cmd, desc in admin_commands]),
                 inline=False
             )
 
@@ -103,6 +114,32 @@ class Commands(commands.Cog):
             await interaction.response.send_message(f"Successfully deleted {user.name}'s account.")
         else:
             await interaction.response.send_message(f"Failed to delete account: User {user.name} doesn't have an account.")
+
+    @app_commands.command(name="give", description="[Admin] Give money to a user")
+    @app_commands.describe(user="User to give money to", amount="Amount to give")
+    async def give_money(self, interaction: discord.Interaction, user: discord.User, amount: float):
+        if interaction.user.id != ADMIN_USER_ID:
+            await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+            return
+
+        if amount <= 0:
+            await interaction.response.send_message("Amount must be positive!", ephemeral=True)
+            return
+
+        current_balance = await get_balance(user.id)
+        if current_balance is None:
+            await interaction.response.send_message(f"Failed: User {user.name} doesn't have an account.", ephemeral=True)
+            return
+
+        new_balance = current_balance + amount
+        success = await set_balance(user.id, new_balance)
+
+        if success:
+            await interaction.response.send_message(
+                f"Successfully given ${amount:.2f} to {user.name}.\nTheir new balance is ${new_balance:.2f}"
+            )
+        else:
+            await interaction.response.send_message(f"Failed to update {user.name}'s balance.", ephemeral=True)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Commands(bot))

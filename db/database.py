@@ -69,6 +69,18 @@ async def update_balance(user_id: int, amount: float) -> bool:
             ''', user_id, amount)
             return 'UPDATE 1' in result
 
+async def set_balance(user_id: int, amount: float) -> bool:
+    """Set a user's balance to a specific amount. Used by admin commands."""
+    pool = await Database.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            result = await conn.execute('''
+                UPDATE users 
+                SET balance = $2 
+                WHERE user_id = $1
+            ''', user_id, amount)
+            return 'UPDATE 1' in result
+
 async def get_leaderboard() -> List[Tuple[str, float]]:
     pool = await Database.get_pool()
     async with pool.acquire() as conn:
