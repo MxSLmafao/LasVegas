@@ -29,6 +29,7 @@ class BlackjackBot(commands.Bot):
             print('Loading extensions...')
             await self.load_extension('cogs.commands')
             await self.load_extension('cogs.game_manager')
+            await self.load_extension('cogs.roulette_manager')  # Add this line
             print('Syncing command tree...')
             await self.tree.sync()
             print('Setup completed successfully!')
@@ -40,7 +41,7 @@ class BlackjackBot(commands.Bot):
         print('Bot is starting...')
         print(f'Logged in as {self.user.name} (ID: {self.user.id})')
         print('------')
-        await self.change_presence(activity=discord.Game(name="Blackjack"))
+        await self.change_presence(activity=discord.Game(name="Blackjack & Roulette"))
 
 async def main():
     try:
