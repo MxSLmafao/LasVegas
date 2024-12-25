@@ -38,6 +38,7 @@ async def init_db():
                 start_time TIMESTAMP NOT NULL,
                 end_time TIMESTAMP NOT NULL,
                 total_pot DECIMAL DEFAULT 0.0,
+                prize_amount DECIMAL NOT NULL,
                 winner_id BIGINT REFERENCES users(user_id) NULL,
                 is_active BOOLEAN DEFAULT TRUE
             )
@@ -118,13 +119,13 @@ async def get_leaderboard() -> List[Tuple[str, float]]:
         ''')
         return [(record['username'], float(record['balance'])) for record in records]
 
-async def create_lottery(start_time: datetime, end_time: datetime) -> int:
+async def create_lottery(start_time: datetime, end_time: datetime, prize_amount: Decimal) -> int:
     """Create a new lottery and return its ID"""
     pool = await Database.get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            'INSERT INTO lotteries (start_time, end_time) VALUES ($1, $2) RETURNING lottery_id',
-            start_time, end_time
+            'INSERT INTO lotteries (start_time, end_time, prize_amount) VALUES ($1, $2, $3) RETURNING lottery_id',
+            start_time, end_time, prize_amount
         )
         return row['lottery_id']
 
@@ -160,7 +161,7 @@ async def get_active_lottery() -> Optional[dict]:
     pool = await Database.get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow('''
-            SELECT lottery_id, start_time, end_time, total_pot, winner_id 
+            SELECT lottery_id, start_time, end_time, total_pot, prize_amount, winner_id 
             FROM lotteries 
             WHERE is_active = TRUE 
             ORDER BY start_time DESC 
