@@ -7,6 +7,9 @@ from decimal import Decimal, InvalidOperation
 import logging
 import aiohttp
 from io import BytesIO
+import random
+import asyncio
+from datetime import datetime, timedelta
 
 ADMIN_USER_ID = 791177475190161419
 PLAYERLIST_CATEGORY_ID = 1224364527911571509
@@ -19,6 +22,7 @@ class Commands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._last_member = None
+        self.rob_cooldowns = {}  # user_id: last_rob_time
         logger.info("Commands cog initialized")
 
     @commands.Cog.listener()
@@ -105,6 +109,7 @@ class Commands(commands.Cog):
             ("bal", "Check your current balance"),
             ("dep", "Deposit money to another user"),
             ("lb", "Show top 5 richest users"),
+            ("rob", "Try to rob another user (35% success rate)"),
             ("help", "Shows this help message")
         ]
 
@@ -225,6 +230,86 @@ class Commands(commands.Cog):
                 await interaction.response.send_message(f"Failed to update {user.name}'s balance.", ephemeral=True)
         except (InvalidOperation, ValueError) as e:
             await interaction.response.send_message(f"Error processing amount: Invalid number format", ephemeral=True)
+
+    @app_commands.command(name="rob", description="Try to rob another user (35% success rate)")
+    @app_commands.describe(user="User to rob")
+    async def rob(self, interaction: discord.Interaction, user: discord.User):
+        # Check cooldown
+        current_time = datetime.now()
+        last_rob_time = self.rob_cooldowns.get(interaction.user.id)
+        if last_rob_time and (current_time - last_rob_time).total_seconds() < 120:
+            remaining_time = 120 - int((current_time - last_rob_time).total_seconds())
+            await interaction.response.send_message(
+                f"You must wait {remaining_time} seconds before attempting another robbery!",
+                ephemeral=True
+            )
+            return
+
+        # Can't rob yourself
+        if user.id == interaction.user.id:
+            await interaction.response.send_message("You can't rob yourself!", ephemeral=True)
+            return
+
+        # Get balances
+        robber_balance = await get_balance(interaction.user.id)
+        target_balance = await get_balance(user.id)
+
+        # Check if both users have accounts
+        if robber_balance is None:
+            await interaction.response.send_message("You need an account to rob! Use /new to create one.", ephemeral=True)
+            return
+        if target_balance is None:
+            await interaction.response.send_message("Target user doesn't have an account!", ephemeral=True)
+            return
+
+        # Set cooldown
+        self.rob_cooldowns[interaction.user.id] = current_time
+
+        # Determine success (35% chance)
+        success = random.random() < 0.35
+
+        if success:
+            # Calculate 20% of target's balance
+            stolen_amount = target_balance * Decimal('0.20')
+
+            # Update balances
+            await update_balance(user.id, float(-stolen_amount))
+            await update_balance(interaction.user.id, float(stolen_amount))
+
+            embed = discord.Embed(
+                title="🦹 Successful Robbery!",
+                description=f"{interaction.user.mention} successfully robbed {user.mention}!",
+                color=discord.Color.green()
+            )
+            embed.add_field(
+                name="Stolen Amount",
+                value=f"${stolen_amount:.2f} (20% of their balance)",
+                inline=False
+            )
+        else:
+            # Calculate 2% penalty
+            penalty_amount = robber_balance * Decimal('0.02')
+
+            # Update robber's balance with penalty
+            await update_balance(interaction.user.id, float(-penalty_amount))
+
+            embed = discord.Embed(
+                title="👮 Failed Robbery!",
+                description=f"{interaction.user.mention} failed to rob {user.mention}!",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="Penalty",
+                value=f"You lost ${penalty_amount:.2f} (2% of your balance)",
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed)
+        logger.info(
+            f"Rob attempt by {interaction.user.id} on {user.id}: "
+            f"{'success' if success else 'failed'}"
+        )
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Commands(bot))
