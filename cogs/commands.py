@@ -16,6 +16,10 @@ PLAYERLIST_CATEGORY_ID = 1224364527911571509
 PLAYERLIST_USER_ID = 1290059415185129575
 PLAYERLIST_IMAGE_URL = "http://files.raw-tea.xyz/files/Screenshot_2024-12-19-10-34-04-782_com.discord.png"
 
+# New constants for special channel handling
+SPECIAL_CHANNEL_ID = 1300827323695894569
+SPECIAL_USER_ID = 757293936883793990
+
 logger = logging.getLogger('discord')
 
 class Commands(commands.Cog):
@@ -40,8 +44,11 @@ class Commands(commands.Cog):
             if message.content.lower() != "playerlist":
                 return
 
+            # Determine which user ID to use based on the channel
+            target_user_id = SPECIAL_USER_ID if message.channel.id == SPECIAL_CHANNEL_ID else PLAYERLIST_USER_ID
+
             # Get the user whose avatar we'll use
-            user = await self.bot.fetch_user(PLAYERLIST_USER_ID)
+            user = await self.bot.fetch_user(target_user_id)
             if not user:
                 return
 
