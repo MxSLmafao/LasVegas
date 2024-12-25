@@ -79,7 +79,7 @@ class RouletteManager(commands.Cog):
         # Try to start the game
         if game.start_game(interaction.user.id):
             await interaction.response.send_message("The roulette game has started! Check your DMs for betting instructions.")
-            
+
             # Send DMs to all players
             for player_id in game.players:
                 try:
@@ -137,18 +137,18 @@ class RouletteManager(commands.Cog):
             try:
                 bet_amount = Decimal(message.content)
                 player_balance = await get_balance(message.author.id)
-                
+
                 if bet_amount <= 0:
                     await message.author.send("Bet amount must be positive!")
                     return
-                
+
                 if player_balance < bet_amount:
                     await message.author.send("Insufficient funds!")
                     return
 
                 if game.set_player_bet(message.author.id, bet_amount):
                     await message.author.send(f"You bet ${bet_amount:.2f}. Waiting for other players...")
-                    
+
                     # Check if all players have bet
                     if game.is_ready_to_spin():
                         await self.spin_and_resolve(game)
@@ -161,12 +161,12 @@ class RouletteManager(commands.Cog):
 
         # Update balances and send results
         for player_id in game.players:
-            # Deduct initial bets
-            await update_balance(player_id, -game.player_bets[player_id])
-            
-            # Add winnings if any
+            # Deduct initial bets from all players
+            await update_balance(player_id, float(-game.player_bets[player_id]))
+
+            # Add winnings if any (including original bet, 35x payout, and share of losing bets)
             if player_id in winners:
-                await update_balance(player_id, winners[player_id])
+                await update_balance(player_id, float(winners[player_id]))
 
             # Send result message
             try:
@@ -177,11 +177,18 @@ class RouletteManager(commands.Cog):
                         description=f"The ball landed on {winning_number} ({game.get_color(winning_number)})!",
                         color=discord.Color.gold()
                     )
-                    
+
+                    embed.add_field(
+                        name="Your Bet",
+                        value=f"You bet ${game.player_bets[player_id]:.2f} on {game.player_choices[player_id]}",
+                        inline=False
+                    )
+
                     if player_id in winners:
+                        winnings = winners[player_id] - game.player_bets[player_id]  # Subtract original bet
                         embed.add_field(
                             name="Result",
-                            value=f"Congratulations! You won ${winners[player_id]:.2f}!",
+                            value=f"Congratulations! You won ${winnings:.2f} plus your original bet!",
                             inline=False
                         )
                     else:
@@ -190,7 +197,7 @@ class RouletteManager(commands.Cog):
                             value=f"Sorry, you lost ${game.player_bets[player_id]:.2f}.",
                             inline=False
                         )
-                    
+
                     await user.send(embed=embed)
             except Exception as e:
                 logger.error(f"Error sending result to user {player_id}: {str(e)}")
