@@ -75,10 +75,10 @@ class RouletteGame:
             if choice == self.winning_number:
                 # Winner gets:
                 # 1. Their original bet back
-                # 2. 35x their bet
+                # 2. 15x their bet
                 # 3. A proportional share of losing bets (if there are multiple winners)
                 winners[player_id] = self.player_bets[player_id]  # Original bet
-                winners[player_id] += self.player_bets[player_id] * Decimal('35')  # Standard payout
+                winners[player_id] += self.player_bets[player_id] * Decimal('15')  # Standard payout
 
         # If there are winners, distribute the losing bets among them
         if winners:
