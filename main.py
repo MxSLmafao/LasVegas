@@ -19,7 +19,7 @@ class BlackjackBot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
-        intents.guild_messages = True  # Enable guild messages intent
+        intents.guild_messages = True
         super().__init__(command_prefix='!', intents=intents)
 
     async def setup_hook(self):
@@ -29,7 +29,8 @@ class BlackjackBot(commands.Bot):
             print('Loading extensions...')
             await self.load_extension('cogs.commands')
             await self.load_extension('cogs.game_manager')
-            await self.load_extension('cogs.roulette_manager')  # Add this line
+            await self.load_extension('cogs.roulette_manager')
+            await self.load_extension('cogs.lottery_manager')
             print('Syncing command tree...')
             await self.tree.sync()
             print('Setup completed successfully!')
@@ -41,7 +42,7 @@ class BlackjackBot(commands.Bot):
         print('Bot is starting...')
         print(f'Logged in as {self.user.name} (ID: {self.user.id})')
         print('------')
-        await self.change_presence(activity=discord.Game(name="Blackjack & Roulette"))
+        await self.change_presence(activity=discord.Game(name="Blackjack, Roulette & Lottery"))
 
 async def main():
     try:
