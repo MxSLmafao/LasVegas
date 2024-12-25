@@ -130,41 +130,49 @@ class LotteryManager(commands.Cog):
 
         # Get all entries
         entries = await get_lottery_entries(active_lottery['lottery_id'])
-        if not entries:
-            await interaction.response.send_message(
-                "Cannot end lottery: No entries found!",
-                ephemeral=True
-            )
-            return
 
-        # Select winner and distribute prize
-        winner_id = random.choice(entries)
-        await set_lottery_winner(active_lottery['lottery_id'], winner_id)
+        if entries:
+            # Select winner and distribute prize
+            winner_id = random.choice(entries)
+            await set_lottery_winner(active_lottery['lottery_id'], winner_id)
 
-        # Give prize to winner
-        winner_prize = active_lottery['prize_amount']
-        await update_balance(winner_id, float(winner_prize))
+            # Give prize to winner
+            winner_prize = active_lottery['prize_amount']
+            await update_balance(winner_id, float(winner_prize))
 
-        # Announce early ending and winner
-        try:
-            winner = await self.bot.fetch_user(winner_id)
+            try:
+                winner = await self.bot.fetch_user(winner_id)
+                embed = discord.Embed(
+                    title="🎰 Lottery Ended Early!",
+                    description=(
+                        "The lottery has been ended early by an administrator!\n\n"
+                        f"🏆 Winner: {winner.mention}\n"
+                        f"💰 Prize: ${winner_prize:.2f}\n\n"
+                        "Congratulations! 🎉"
+                    ),
+                    color=discord.Color.red()
+                )
+            except Exception as e:
+                logger.error(f"Error announcing early lottery end: {str(e)}")
+                await interaction.response.send_message(
+                    "An error occurred while announcing the winner.",
+                    ephemeral=True
+                )
+                return
+        else:
+            # No entries case
+            await set_lottery_winner(active_lottery['lottery_id'], None)
             embed = discord.Embed(
                 title="🎰 Lottery Ended Early!",
                 description=(
                     "The lottery has been ended early by an administrator!\n\n"
-                    f"🏆 Winner: {winner.mention}\n"
-                    f"💰 Prize: ${winner_prize:.2f}\n\n"
-                    "Congratulations! 🎉"
+                    "❌ No entries were made in this lottery.\n"
+                    "No prize will be distributed."
                 ),
                 color=discord.Color.red()
             )
-            await interaction.response.send_message(embed=embed)
-        except Exception as e:
-            logger.error(f"Error announcing early lottery end: {str(e)}")
-            await interaction.response.send_message(
-                "An error occurred while announcing the winner.",
-                ephemeral=True
-            )
+
+        await interaction.response.send_message(embed=embed)
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
