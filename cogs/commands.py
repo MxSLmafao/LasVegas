@@ -110,7 +110,8 @@ class Commands(commands.Cog):
             ("dep", "Deposit money to another user"),
             ("lb", "Show top 5 richest users"),
             ("rob", "Try to rob another user (35% success rate)"),
-            ("help", "Shows this help message")
+            ("help", "Shows this help message"),
+            ("clear", "[Admin] Clear a specified number of messages")
         ]
 
         for name, desc in commands_info:
@@ -309,6 +310,48 @@ class Commands(commands.Cog):
             f"Rob attempt by {interaction.user.id} on {user.id}: "
             f"{'success' if success else 'failed'}"
         )
+
+    @app_commands.command(name="clear", description="[Admin] Clear a specified number of messages")
+    @app_commands.describe(amount="Number of messages to delete")
+    async def clear_messages(self, interaction: discord.Interaction, amount: int):
+        # Check if user is admin
+        if interaction.user.id != ADMIN_USER_ID:
+            await interaction.response.send_message(
+                "You don't have permission to use this command!", 
+                ephemeral=True
+            )
+            return
+
+        # Validate amount
+        if amount <= 0:
+            await interaction.response.send_message(
+                "Please specify a positive number of messages to delete.",
+                ephemeral=True
+            )
+            return
+
+        # Defer the response since deletion might take time
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            # Delete messages
+            deleted = await interaction.channel.purge(limit=amount)
+            await interaction.followup.send(
+                f"Successfully deleted {len(deleted)} messages.",
+                ephemeral=True
+            )
+            logger.info(f"Admin {interaction.user.id} cleared {len(deleted)} messages in channel {interaction.channel.id}")
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "I don't have permission to delete messages in this channel.",
+                ephemeral=True
+            )
+        except discord.HTTPException as e:
+            await interaction.followup.send(
+                f"An error occurred while deleting messages: {str(e)}",
+                ephemeral=True
+            )
+            logger.error(f"Error in clear command: {str(e)}")
 
 
 async def setup(bot: commands.Bot):
